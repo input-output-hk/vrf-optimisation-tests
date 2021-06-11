@@ -160,4 +160,26 @@ goes, we assume that the nodes do have sufficient source of randomness,
 and therefore these scalars can exploit this source of randomness
 to be selected. 
 
-### 
+### Performance analysis
+We run a performance analysis to understand how much improvement such a 
+change would bring to the VRF verification. For a preliminary analysis, 
+we use a `rust` binary using `curve_25519_dalek`, which has a better
+API for multiscalar multiplication. Our main goal is to compare the 
+efficiency improvements of computing a single multiscalar multiplication
+vs computing individual computations of `U` and `V`.
+
+If we run the batched experiments
+```bash
+cargo run
+```
+and check the `batch_results.csv`
+```python
+>>> batch_data = pd.read_csv("batch_results.csv")
+>>> batch_data.mean()
+current      118.652
+optimised     53.156
+```
+we see that the optimisation results in an important improvement. This 
+comes at the cost of non-backwards compatibility, and a bigger proof
+transcript, as we now need to include two additional points. 
+

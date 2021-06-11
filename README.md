@@ -52,5 +52,6 @@ is due to the fact that the api assumes the caller does not "know what
 it is doing", and before performing the operation makes a bunch of 
 tests and conversions. 
 
-### ToDo
-- [ ] Batch verification (needs slight modification of VRF)
+### Batch verification
+We give details of the changes required for batch verification in [VRF_BATCH](VRF_BATCH.md)
+file, and perform a preliminary performance study using the rust binary. 
