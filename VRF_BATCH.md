@@ -1,16 +1,163 @@
 # VRF Batching
-This document describes the changes required to allow for VRF batch-verification and its consequences. This change would allow for a XXX improvement in the verification time. However, it requires a hard fork, and suffers worst communication performance (more data needs to be published onchain). The proposal presented here is based in the exact same VRF construction used currently---it only requires a minor change. This document focuses _exclusively_ in the performance estimates---a thorough review of the changes with respect to the security properties is required.
+This document describes the changes required to allow for VRF 
+batch-verification and its consequences. This change would allow 
+for a XXX improvement in the verification time. However, it 
+requires a hard fork, and suffers worst communication performance 
+(more data needs to be published onchain). The proposal presented 
+here is based in the exact same VRF construction used currently---it 
+only requires a minor change. This document focuses _exclusively_ 
+in the performance estimates---a thorough review of the changes with 
+respect to the security properties is required.
 
-We begin by introducing notation and general functions. Next, we present the VRF algorithm currently in use, and proceed with an explanation of the modified (batch compatible) construction (which was first discussed in this [e-mail thread](https://mailarchive.ietf.org/arch/msg/cfrg/KJwe92nLEkmJGpBe-OST_ilr_MQ/)). We discuss in detail the changes, presenting the pros and cons. Finally, we present a performance study of the effects of this modification.
+We begin by introducing notation and general functions. Next, 
+we present the VRF algorithm currently in use, and proceed with 
+an explanation of the modified (batch compatible) construction 
+(which was first discussed in this [e-mail thread](https://mailarchive.ietf.org/arch/msg/cfrg/KJwe92nLEkmJGpBe-OST_ilr_MQ/)). 
+We discuss in detail the changes, presenting the pros and cons. 
+Finally, we present a performance study of the effects of this 
+modification.
 
 ### Notation
-* $\texttt{ECVRF_hash_to_curve}(S):$ This function takes a transcript $S$, and hashes it to get a
+* `ECVRF_hash_to_curve`: This function takes a transcript `S`, and hashes it to
+a point in the group.
+* `point_to_string`: Conversion of EC point to an octet string
+* `ECVRF_nonce_generation`: A function that derives a pseudorandom
+  nonce from SK and the input as part of ECVRF proving.
+* `ECVRF_hash_points`: A function that takes EC points and hashes them
+* `ECVRF_decode_proof`: Given a proof represented as a string, this 
+  function parses the different values, and converts them to their
+  corresponding types.
+* `ECVRF_proof_to_hash`: Given a valid proof, this function returns the
+VRF output.
 
-point_to_string
 
-ECVRF_nonce_generation
+### VRF
+In this section we describe a summary of the two functions that define 
+the VRF, `ECVRF_prove` and `ECVRF_verify`. For a thorough description
+we refer the reader to the [IRTF draft](https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-vrf-09).
+```
+ECVRF_prove(SK, alpha_string)
+Input:
 
-ECVRF_hash_points
+      SK - VRF private key
 
+      alpha_string = input alpha, an octet string
 
-### VRF 
+Output:
+
+      pi_string - VRF proof, octet string
+
+Steps:
+
+1.  Use SK to derive the VRF secret scalar x and the VRF public key Y
+    = x*B
+    
+2.  H = ECVRF_hash_to_curve(Y, alpha_string)
+
+3.  h_string = point_to_string(H)
+
+4.  Gamma = x*H
+
+5.  k = ECVRF_nonce_generation(SK, h_string)
+
+6.  c = ECVRF_hash_points(H, Gamma, k*B, k*H) (see Section 5.4.3)
+
+7.  s = (k + c*x) mod q
+
+8.  pi_string = point_to_string(Gamma) || int_to_string(c) ||
+    int_to_string(s)
+
+9.  Output pi_string
+```
+
+```
+ECVRF_verify(Y, pi_string, alpha_string)
+
+Input:
+
+      Y - public key, an EC point
+
+      pi_string - VRF proof, octet string of length ptLen+n+qLen
+
+      alpha_string - VRF input, octet string
+
+Output:
+
+      ("VALID", beta_string), where beta_string is the VRF hash output; 
+      or
+      "INVALID"
+
+Steps:
+
+1.  D = ECVRF_decode_proof(pi_string)
+
+2.  (Gamma, c, s) = D
+
+3.  H = ECVRF_hash_to_curve(Y, alpha_string)
+
+4.  U = s*B - c*Y
+
+5.  V = s*H - c*Gamma
+
+6.  c' = ECVRF_hash_points(H, Gamma, U, V) (see Section 5.4.3)
+
+7.  If c and c' are equal, output ("VALID",
+    ECVRF_proof_to_hash(pi_string)); else output "INVALID"
+```
+
+### Batching verifications
+To achieve an efficient batch of the verifications, the single operations
+which can be improved by computing them for several proofs are points
+4 and 5. We can achieve an important improvement if, instead of computing
+sequential scalar multiplications, we perform a _single_ multiscalar
+multiplication for all proofs that are being verified. 
+
+However, this trick can only be exploited if points 4 and 5 are equality
+checks rather than computations. As it is currently defined, the verifier
+has no knowledge of points `U` and `V`, and computes them with equations 4 
+and 5. However, if the prover included points `U` and `V` in the 
+transacript, and the verifier simply checked for equality, then the
+multiscalar optimisation can be exploited. 
+
+In particular, this would require changes in step 8 of `ECVRF_prove`, and
+steps 2, 4 and 5 of `ECVRF_verify`. In particular: 
+```
+ECVRF_prove
+8. pi_string = point_to_string(Gamma) || point_to_string(k*B) || 
+point_to_string(k*H) || int_to_string(c) || int_to_string(s)
+```
+
+```
+ECVRF_verify
+2. (Gamma, U, V, c, s) = D
+
+4.  U =? s*B - c*Y
+
+5.  V =? s*H - c*Gamma
+```
+where `=?` denotes equality check. Now, assume that there are `n` different
+VRF proofs to verify. The verifier needs to compute
+```
+U_i =? s_i * B_i - c_i * Y_i
+V_i =? s_i * H_i - c_i * Gamma_i
+```
+which can be converted to
+```
+0 =? s_i * B_i - c_i * Y_i - U_i 
+0 =? s_i * H_i - c_i * Gamma_i - V_i
+```
+for `i` in `[1,n]`. The performance boost comes when we combine all these
+checks, into a single verification, by using linear combinations of 
+each equation using random scalars. In particular, the verifier could 
+compute the following check
+```
+0 =? SUM(r_i * (s_i * B_i - c_i * Y_i - U_i) + 
+            l_i * (s_i * H_i - c_i * Gamma_i - V_i))
+```
+
+with `r_i` and `l_i` being random scalars. As far as my understanding
+goes, we assume that the nodes do have sufficient source of randomness, 
+and therefore these scalars can exploit this source of randomness
+to be selected. 
+
+### 
