@@ -204,7 +204,7 @@ int main(void) {
     unsigned char vrf_proof_own[crypto_vrf_ietfdraft03_PROOFBYTES];
     crypto_vrf_ietfdraft03_prove_try_inc(vrf_proof_own, sk, message, MESSAGE_LEN);
     unsigned char proof_output[crypto_vrf_ietfdraft03_OUTPUTBYTES];
-    for (int i = 0; i < 100000; i++){
+    for (int i = 0; i < 1000; i++){
         clock_t t_api;
         t_api = clock();
         api_scalarmul(pk, random_scalar);
