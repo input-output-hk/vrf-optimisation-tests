@@ -24,79 +24,127 @@ use std::time::Instant;
 ///             (l_i * s_i) * H_i - (l_i * c_i) * Gamma_i - l_i * V_i)
 ///
 /// We write the results into `batch_results.csv`.
-const NR_ITERATIONS: usize = 1_000;
-fn main() {
-    let mut wtr = Writer::from_path("batch_results.csv").expect("failed to open file");
-    wtr.write_record(&["current", "optimised"])
-        .expect("failed to write to file");
+const NR_ITERATIONS: usize = 10;
 
-    let nr_equations = 100usize;
+fn main() {
+    let nr_equations = 1024usize;
+    let batches: Vec<usize> = vec![1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024];
+
+    let mut labels: Vec<String> = batches
+        .iter()
+        .map(|size| format!("Batch size {}", size))
+        .collect();
+    labels.insert(0, "No batch".to_owned());
+    let mut wtr = Writer::from_path("batch_results.csv").expect("failed to open file");
+    wtr.write_record(&labels).expect("failed to write first line to file");
 
     for _ in 0..NR_ITERATIONS {
-        let random_r = vec![Scalar::random(&mut rand::thread_rng()); nr_equations];
-        let random_l = vec![Scalar::random(&mut rand::thread_rng()); nr_equations];
-
-        let mut s_vector_r = vec![Scalar::random(&mut rand::thread_rng()); nr_equations];
-        let mut c_vector_r = vec![Scalar::random(&mut rand::thread_rng()); nr_equations];
-
-        let B_vector = vec![RistrettoPoint::random(&mut rand::thread_rng()); nr_equations];
-        let Y_vector = vec![RistrettoPoint::random(&mut rand::thread_rng()); nr_equations];
-        let U_vector = vec![RistrettoPoint::random(&mut rand::thread_rng()); nr_equations];
-        let H_vector = vec![RistrettoPoint::random(&mut rand::thread_rng()); nr_equations];
-        let G_vector = vec![RistrettoPoint::random(&mut rand::thread_rng()); nr_equations];
-        let V_vector = vec![RistrettoPoint::random(&mut rand::thread_rng()); nr_equations];
-
-        let start_current = Instant::now();
-        for i in 0..nr_equations {
-            let _U = RistrettoPoint::vartime_multiscalar_mul(
-                &[s_vector_r[i], -c_vector_r[i]],
-                &[B_vector[i], Y_vector[i]],
-            );
-            let _V = RistrettoPoint::vartime_multiscalar_mul(
-                &[s_vector_r[i], -c_vector_r[i]],
-                &[H_vector[i], G_vector[i]],
-            );
-        }
-        let duration_current = start_current.elapsed();
-
-        let start_opt = Instant::now();
-        let mut s_vector_l = vec![Scalar::random(&mut rand::thread_rng()); nr_equations];
-        let mut c_vector_l = vec![Scalar::random(&mut rand::thread_rng()); nr_equations];
-
-        let it = random_r.iter().zip(random_l.iter());
-
-        for (i, (r, l)) in it.enumerate() {
-            s_vector_l[i] *= l;
-            s_vector_r[i] *= r;
-            c_vector_l[i] *= l;
-            c_vector_r[i] *= r;
-        }
-
-        // we should negate some of the scalar eventually
-        let _R = RistrettoPoint::vartime_multiscalar_mul(
-            s_vector_r
-                .iter()
-                .chain(c_vector_r.iter())
-                .chain(random_r.iter())
-                .chain(s_vector_l.iter())
-                .chain(c_vector_l.iter())
-                .chain(random_l.iter()),
-            B_vector
-                .iter()
-                .chain(Y_vector.iter())
-                .chain(U_vector.iter())
-                .chain(H_vector.iter())
-                .chain(G_vector.iter())
-                .chain(V_vector.iter()),
-        );
-
-        let duration_opt = start_opt.elapsed();
-
-        wtr.write_record(&[
-            format!("{:?}", duration_current.as_millis()),
-            format!("{:?}", duration_opt.as_millis()),
-        ])
-        .expect("failed to write to file");
+        comparison_helper(nr_equations, &batches, &mut wtr);
     }
     wtr.flush().expect("Failed to flush the writer");
+}
+
+fn batched_elapse(
+    batch_size: usize,
+    random_r: &Vec<Scalar>,
+    random_l: &Vec<Scalar>,
+    s_vector_r: &mut Vec<Scalar>,
+    c_vector_r: &mut Vec<Scalar>,
+    B_vector: &Vec<RistrettoPoint>,
+    Y_vector: &Vec<RistrettoPoint>,
+    U_vector: &Vec<RistrettoPoint>,
+    H_vector: &Vec<RistrettoPoint>,
+    G_vector: &Vec<RistrettoPoint>,
+    V_vector: &Vec<RistrettoPoint>,
+) -> String {
+    let full_size = random_r.len();
+    let nr_batches = full_size / batch_size;
+
+    let start_opt = Instant::now();
+    let mut s_vector_l = vec![Scalar::random(&mut rand::thread_rng()); batch_size];
+    let mut c_vector_l = vec![Scalar::random(&mut rand::thread_rng()); batch_size];
+
+    for i in 0..nr_batches {
+        let it = random_r[i * batch_size..(i + 1) * batch_size].iter().zip(random_l[i * batch_size..(i + 1) * batch_size].iter());
+
+        for (j, (r, l)) in it.enumerate() {
+            s_vector_l[j] *= l;
+            s_vector_r[j] *= r;
+            c_vector_l[j] *= l;
+            c_vector_r[j] *= r;
+        }
+
+        // we should negate some of the scalars eventually
+        let _R = RistrettoPoint::vartime_multiscalar_mul(
+            s_vector_l
+                .iter()
+                .chain(c_vector_r[i * batch_size..(i + 1) * batch_size].iter())
+                .chain(random_r[i * batch_size..(i + 1) * batch_size].iter())
+                .chain(s_vector_r[i * batch_size..(i + 1) * batch_size].iter())
+                .chain(c_vector_l.iter())
+                .chain(random_l[i * batch_size..(i + 1) * batch_size].iter()),
+            B_vector[i * batch_size..(i + 1) * batch_size]
+                .iter()
+                .chain(Y_vector[i * batch_size..(i + 1) * batch_size].iter())
+                .chain(U_vector[i * batch_size..(i + 1) * batch_size].iter())
+                .chain(H_vector[i * batch_size..(i + 1) * batch_size].iter())
+                .chain(G_vector[i * batch_size..(i + 1) * batch_size].iter())
+                .chain(V_vector[i * batch_size..(i + 1) * batch_size].iter()),
+        );
+
+    }
+
+    let duration_opt = start_opt.elapsed();
+    format!("{}", duration_opt.as_millis())
+}
+
+fn comparison_helper<W: std::io::Write>(
+    nr_equations: usize,
+    batches: &Vec<usize>,
+    wtr: &mut Writer<W>,
+) {
+    let random_r = vec![Scalar::random(&mut rand::thread_rng()); nr_equations];
+    let random_l = vec![Scalar::random(&mut rand::thread_rng()); nr_equations];
+
+    let mut s_vector_r = vec![Scalar::random(&mut rand::thread_rng()); nr_equations];
+    let mut c_vector_r = vec![Scalar::random(&mut rand::thread_rng()); nr_equations];
+
+    let B_vector = vec![RistrettoPoint::random(&mut rand::thread_rng()); nr_equations];
+    let Y_vector = vec![RistrettoPoint::random(&mut rand::thread_rng()); nr_equations];
+    let U_vector = vec![RistrettoPoint::random(&mut rand::thread_rng()); nr_equations];
+    let H_vector = vec![RistrettoPoint::random(&mut rand::thread_rng()); nr_equations];
+    let G_vector = vec![RistrettoPoint::random(&mut rand::thread_rng()); nr_equations];
+    let V_vector = vec![RistrettoPoint::random(&mut rand::thread_rng()); nr_equations];
+
+    let start_current = Instant::now();
+    for i in 0..nr_equations {
+        let _U = RistrettoPoint::vartime_multiscalar_mul(
+            &[s_vector_r[i], -c_vector_r[i]],
+            &[B_vector[i], Y_vector[i]],
+        );
+        let _V = RistrettoPoint::vartime_multiscalar_mul(
+            &[s_vector_r[i], -c_vector_r[i]],
+            &[H_vector[i], G_vector[i]],
+        );
+    }
+    let duration_current = start_current.elapsed();
+
+    let batched_time: Vec<String> = batches.iter().map(|batch| batched_elapse(
+        *batch,
+        &random_r.to_vec(),
+        &random_l.to_vec(),
+        &mut s_vector_r.to_vec(),
+        &mut c_vector_r.to_vec(),
+        &B_vector.to_vec(),
+        &Y_vector.to_vec(),
+        &U_vector.to_vec(),
+        &H_vector.to_vec(),
+        &G_vector.to_vec(),
+        &V_vector.to_vec(),
+    )).collect();
+
+    let mut times = vec![format!("{:?}", duration_current.as_millis())];
+    times.extend_from_slice(&batched_time);
+    wtr.write_record(&times)
+        .expect("failed to write to file");
 }
