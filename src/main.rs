@@ -24,7 +24,7 @@ use std::time::Instant;
 ///             (l_i * s_i) * H_i - (l_i * c_i) * Gamma_i - l_i * V_i)
 ///
 /// We write the results into `batch_results.csv`.
-const NR_ITERATIONS: usize = 10;
+const NR_ITERATIONS: usize = 500;
 
 fn main() {
     let nr_equations = 1024usize;
@@ -131,16 +131,16 @@ fn comparison_helper<W: std::io::Write>(
 
     let batched_time: Vec<String> = batches.iter().map(|batch| batched_elapse(
         *batch,
-        &random_r.to_vec(),
-        &random_l.to_vec(),
-        &mut s_vector_r.to_vec(),
-        &mut c_vector_r.to_vec(),
-        &B_vector.to_vec(),
-        &Y_vector.to_vec(),
-        &U_vector.to_vec(),
-        &H_vector.to_vec(),
-        &G_vector.to_vec(),
-        &V_vector.to_vec(),
+        &random_r,
+        &random_l,
+        &mut s_vector_r,
+        &mut c_vector_r,
+        &B_vector,
+        &Y_vector,
+        &U_vector,
+        &H_vector,
+        &G_vector,
+        &V_vector,
     )).collect();
 
     let mut times = vec![format!("{:?}", duration_current.as_millis())];

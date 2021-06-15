@@ -117,7 +117,7 @@ checks rather than computations. As it is currently defined, the verifier
 has no knowledge of points `U` and `V`, and computes them with equations 4 
 and 5. However, if the prover included points `U` and `V` in the 
 transacript, and the verifier simply checked for equality, then the
-multiscalar optimisation can be exploited. 
+multiscalar optimisation could be exploited. 
 
 In particular, this would require changes in step 8 of `ECVRF_prove`, and
 steps 2, 4 and 5 of `ECVRF_verify`. In particular: 
@@ -165,21 +165,39 @@ We run a performance analysis to understand how much improvement such a
 change would bring to the VRF verification. For a preliminary analysis, 
 we use a `rust` binary using `curve_25519_dalek`, which has a better
 API for multiscalar multiplication. Our main goal is to compare the 
-efficiency improvements of computing a single multiscalar multiplication
-vs computing individual computations of `U` and `V`.
+efficiency improvements of computing batched multiscalar multiplications 
+of different sizes
+vs computing individual computations of `U` and `V`. The current experiments 
+focus exclusively in steps 4 and 5 of the verification function, therefore
+these estimates are not fully precise. We analyse the running times of verifying
+`1024` proofs with no batch, and with batches of sizes `2^i` for `i` in `[0, 10]`.
+Note that the difference between no batch and batch of size one is that for the
+batched case we batch the equations 4 and 5, while in the non-batched case, we
+compute them individually. 
 
 If we run the batched experiments
 ```bash
 cargo run
 ```
-and check the `batch_results.csv`
+and check the `batch_results.csv` using python
 ```python
+python3
 >>> batch_data = pd.read_csv("batch_results.csv")
 >>> batch_data.mean()
-current      118.652
-optimised     53.156
+No batch           83.547052
+Batch size 1       76.738304
+Batch size 2       65.952413
+Batch size 4       67.722751
+Batch size 8       64.462740
+Batch size 16      57.596202
+Batch size 32      46.550699
+Batch size 64      50.980108
+Batch size 128     42.380395
+Batch size 256     33.820934
+Batch size 512     32.630467
+Batch size 1024    29.648970
 ```
-we see that the optimisation results in an important improvement. This 
+We see that the optimisation results in an important improvement. This 
 comes at the cost of non-backwards compatibility, and a bigger proof
-transcript, as we now need to include two additional points. 
+transcript, as we now need to include two additional points to the transcript. 
 
