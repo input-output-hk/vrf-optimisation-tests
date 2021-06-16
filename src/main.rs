@@ -1,11 +1,15 @@
 #![allow(non_snake_case)]
+#![allow(clippy::too_many_arguments)]
+use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::traits::VartimeMultiscalarMul;
 
 use csv::Writer;
-use rand;
 use std::time::Instant;
+
+pub mod twohashdh;
+use twohashdh::TwoHashVrfProof;
 
 /// In this preliminary performance analysis we compare the run of computing
 ///
@@ -24,7 +28,7 @@ use std::time::Instant;
 ///             (l_i * s_i) * H_i - (l_i * c_i) * Gamma_i - l_i * V_i)
 ///
 /// We write the results into `batch_results.csv`.
-const NR_ITERATIONS: usize = 500;
+const NR_ITERATIONS: usize = 1000;
 
 fn main() {
     let nr_equations = 1024usize;
@@ -36,26 +40,45 @@ fn main() {
         .collect();
     labels.insert(0, "No batch".to_owned());
     let mut wtr = Writer::from_path("batch_results.csv").expect("failed to open file");
-    wtr.write_record(&labels).expect("failed to write first line to file");
+    wtr
+        .write_record(&labels)
+        .expect("failed to write first line to file");
 
+    let mut wtr_hash = Writer::from_path("two_hash_dh.csv").expect("failed to open file");
+    wtr_hash
+        .write_record(&["two_hash_dh".to_owned()])
+        .expect("failed to write first line");
+
+    let sk = Scalar::random(&mut rand::thread_rng());
+    let pk = RISTRETTO_BASEPOINT_POINT * sk;
+    let message = b"test message";
+    let vrf_proof = TwoHashVrfProof::prove(sk, pk, message);
     for _ in 0..NR_ITERATIONS {
+        let start_hash = Instant::now();
+        let _vrf_result = vrf_proof.proof_to_hash(pk, message);
+        let duration_hash = start_hash.elapsed();
+        wtr_hash
+            .write_record(&[format!("{}", duration_hash.as_millis())])
+            .expect("failed to write to file");
+
         comparison_helper(nr_equations, &batches, &mut wtr);
     }
+    wtr_hash.flush().expect("failed to flush hash writer");
     wtr.flush().expect("Failed to flush the writer");
 }
 
 fn batched_elapse(
     batch_size: usize,
-    random_r: &Vec<Scalar>,
-    random_l: &Vec<Scalar>,
-    s_vector_r: &mut Vec<Scalar>,
-    c_vector_r: &mut Vec<Scalar>,
-    B_vector: &Vec<RistrettoPoint>,
-    Y_vector: &Vec<RistrettoPoint>,
-    U_vector: &Vec<RistrettoPoint>,
-    H_vector: &Vec<RistrettoPoint>,
-    G_vector: &Vec<RistrettoPoint>,
-    V_vector: &Vec<RistrettoPoint>,
+    random_r: &[Scalar],
+    random_l: &[Scalar],
+    s_vector_r: &mut [Scalar],
+    c_vector_r: &mut [Scalar],
+    B_vector: &[RistrettoPoint],
+    Y_vector: &[RistrettoPoint],
+    U_vector: &[RistrettoPoint],
+    H_vector: &[RistrettoPoint],
+    G_vector: &[RistrettoPoint],
+    V_vector: &[RistrettoPoint],
 ) -> String {
     let full_size = random_r.len();
     let nr_batches = full_size / batch_size;
@@ -65,7 +88,9 @@ fn batched_elapse(
     let mut c_vector_l = vec![Scalar::random(&mut rand::thread_rng()); batch_size];
 
     for i in 0..nr_batches {
-        let it = random_r[i * batch_size..(i + 1) * batch_size].iter().zip(random_l[i * batch_size..(i + 1) * batch_size].iter());
+        let it = random_r[i * batch_size..(i + 1) * batch_size]
+            .iter()
+            .zip(random_l[i * batch_size..(i + 1) * batch_size].iter());
 
         for (j, (r, l)) in it.enumerate() {
             s_vector_l[j] *= l;
@@ -91,7 +116,6 @@ fn batched_elapse(
                 .chain(G_vector[i * batch_size..(i + 1) * batch_size].iter())
                 .chain(V_vector[i * batch_size..(i + 1) * batch_size].iter()),
         );
-
     }
 
     let duration_opt = start_opt.elapsed();
@@ -100,7 +124,7 @@ fn batched_elapse(
 
 fn comparison_helper<W: std::io::Write>(
     nr_equations: usize,
-    batches: &Vec<usize>,
+    batches: &[usize],
     wtr: &mut Writer<W>,
 ) {
     let random_r = vec![Scalar::random(&mut rand::thread_rng()); nr_equations];
@@ -129,22 +153,26 @@ fn comparison_helper<W: std::io::Write>(
     }
     let duration_current = start_current.elapsed();
 
-    let batched_time: Vec<String> = batches.iter().map(|batch| batched_elapse(
-        *batch,
-        &random_r,
-        &random_l,
-        &mut s_vector_r,
-        &mut c_vector_r,
-        &B_vector,
-        &Y_vector,
-        &U_vector,
-        &H_vector,
-        &G_vector,
-        &V_vector,
-    )).collect();
+    let batched_time: Vec<String> = batches
+        .iter()
+        .map(|batch| {
+            batched_elapse(
+                *batch,
+                &random_r,
+                &random_l,
+                &mut s_vector_r,
+                &mut c_vector_r,
+                &B_vector,
+                &Y_vector,
+                &U_vector,
+                &H_vector,
+                &G_vector,
+                &V_vector,
+            )
+        })
+        .collect();
 
     let mut times = vec![format!("{:?}", duration_current.as_millis())];
     times.extend_from_slice(&batched_time);
-    wtr.write_record(&times)
-        .expect("failed to write to file");
+    wtr.write_record(&times).expect("failed to write to file");
 }
