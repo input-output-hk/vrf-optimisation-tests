@@ -10,3 +10,6 @@ all:
 
 clean:
 		rm -rf vrf_tests
+
+twohashdh:
+	$(CC) $(LDFLAGS) twohashdh.c -o twohashdh_tests
