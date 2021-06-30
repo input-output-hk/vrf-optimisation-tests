@@ -32,9 +32,13 @@ int main(void) {
 
         clock_t t_internal;
         t_internal = clock();
-        internal_scalarmul(pk, random_scalar);
+        int int_mul = internal_scalarmul(pk, random_scalar);
         t_internal = clock() - t_internal;
         double time_internal = ((double) t_internal) / CLOCKS_PER_SEC;
+
+        if (int_mul != 0) {
+            printf("failed internal multiplication");
+        }
 
         clock_t t_verif;
         t_verif = clock();
