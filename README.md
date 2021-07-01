@@ -125,8 +125,11 @@ If the resulting point is infinity, or the input scalar is zero.
 This results in important useless overhead. This checks are there to ensure safe
 operations, but are not always required, in particular when designing a protocol for 
 which we are certain that the bytes represent valid points. Moreover, the API does not
-expose optimised operations, such as `ge25519_double_scalarmult_vartime`, which is crucial
-for the performance optimisation in the VRF verification. 
+expose optimised operations, such as `ge25519_double_scalarmult_vartime` (for instance, 
+this function uses a different representation of EC points for more optimal
+operations), which is crucial for the performance optimisation in the VRF verification.
+Similarly, it does not expose all point representations, not allowing us to implement
+optimised algorithms. 
 
 The reasons above are strong reasons to not use `libsodium` as a library, but rather 
 use a fork. 

@@ -1,15 +1,11 @@
 #![allow(non_snake_case)]
 #![allow(clippy::too_many_arguments)]
-use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::traits::VartimeMultiscalarMul;
 
 use csv::Writer;
 use std::time::Instant;
-
-pub mod twohashdh;
-use twohashdh::TwoHashVrfProof;
 
 /// In this preliminary performance analysis we compare the run of computing
 ///
@@ -44,26 +40,9 @@ fn main() {
         .write_record(&labels)
         .expect("failed to write first line to file");
 
-    let mut wtr_hash = Writer::from_path("two_hash_dh.csv").expect("failed to open file");
-    wtr_hash
-        .write_record(&["two_hash_dh".to_owned()])
-        .expect("failed to write first line");
-
-    let sk = Scalar::random(&mut rand::thread_rng());
-    let pk = RISTRETTO_BASEPOINT_POINT * sk;
-    let message = b"test message";
-    let vrf_proof = TwoHashVrfProof::prove(sk, pk, message);
     for _ in 0..NR_ITERATIONS {
-        let start_hash = Instant::now();
-        let _vrf_result = vrf_proof.proof_to_hash(pk, message);
-        let duration_hash = start_hash.elapsed();
-        wtr_hash
-            .write_record(&[format!("{}", duration_hash.as_millis())])
-            .expect("failed to write to file");
-
         comparison_helper(nr_equations, &batches, &mut wtr);
     }
-    wtr_hash.flush().expect("failed to flush hash writer");
     wtr.flush().expect("Failed to flush the writer");
 }
 

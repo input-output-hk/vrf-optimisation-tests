@@ -160,6 +160,11 @@ goes, we assume that the nodes do have sufficient source of randomness,
 and therefore these scalars can exploit this source of randomness
 to be selected. 
 
+Note that an invalid proof will invalidate the whole batch, and then we need
+to break down the batches to determine which is the invalid proof. However, 
+in our use case, when multiple VRFs are expected to be validated we expect all
+of them to be valid, making this risk reasonable in practice. 
+
 ### Performance analysis
 We run a performance analysis to understand how much improvement such a 
 change would bring to the VRF verification. For a preliminary analysis, 
@@ -201,3 +206,5 @@ We see that the optimisation results in an important improvement. This
 comes at the cost of non-backwards compatibility, and a bigger proof
 transcript, as we now need to include two additional points to the transcript. 
 
+Note that this performance only considers steps 4 and 5 of the algorithm (see above). 
+This does not represent the time of verifying 1024 proofs. 
