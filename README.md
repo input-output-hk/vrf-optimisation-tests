@@ -1,5 +1,17 @@
 ## VRF optimisations
 Testing possible improvements for the VRF verification function. 
+
+### Results
+
+|    | Verification time (us)   | Improvement  |
+| ------------- |:-------------:| -----:|
+| Current fn    | 206 | 1 |
+| Vartime ops      | 152      |   0.73 |
+| Try and increment (over vartime) | 139 | 0.67 |
+| Batch verification (estimate) | 75 | 0.36|
+| Try and increment (over batch, estimate) | 62 | 0.3 | 
+
+### Running tests
 This code compiles using the `vrf_opts` [branch](https://github.com/input-output-hk/libsodium/tree/vrf_opts) 
 of IOHK's `libsodium` fork.
 
@@ -22,7 +34,7 @@ python3
 ```
 
 We are also studying the possibility of not relying on a fork of libsodium,
-and insted use it as a library. For that, we also benchmark the performance
+and instead use it as a library. For that, we also benchmark the performance
 of the operations available in the API vs the internal operations. A run 
 with 100_000 iterations get us the following numbers. 
 
@@ -35,16 +47,16 @@ with 100_000 iterations get us the following numbers.
  internal_mul     0.000052
 ```
 
-`verif` is the implementation used currently, with no optimisations. We 
-can see that using try and increment technique, `verif_try_inc`, to 
-compute `hash_to_curve`, instead of `elligator`, gives a 
-slight improvement. However, it is to note that this would require a
-hard fork. 
-
+`verif` is the implementation used currently, with no optimisations. 
 `verif_opt` runs the VRF verification with variable time operations. We 
 can see a considerable improvement in this case. To make matters better
 this would be compatible with the current node implementation---we would
-simply need to change the verification function. 
+simply need to change the verification function, and no hard-fork would be
+required. We also experiment using a different `hash_to_curve` function
+(also in the IETF draft). We can see that using try and increment technique, 
+`verif_try_inc`, instead of `elligator`, gives a
+slight improvement. However, it is to note that this would require a
+hard fork.
 
 Finally, the operations made available in the api, `api_mul`,
 show to perform much worse than the internal ones, `internal_mul`. This 
@@ -55,6 +67,20 @@ tests and conversions.
 ### Batch verification
 We give details of the changes required for batch verification in [VRF_BATCH](VRF_BATCH.md)
 file, and perform a preliminary performance study using the rust binary. 
+
+### EC optimisations and Hash optimisations
+The VRF verification equation is separated in two main blocks. EC-related operations and 
+hash-related operations. The optimisations that can be exploited by the EC operations, cannot
+be exploited by the hashing operations, and viceversa. This means that the variable time operations, 
+or the batch verification does not improve the hash-related functions. Similarly, using try and 
+increment, does not result in a performance proportional to the overall time, but rather an 
+absolute improvement. In other words, the improvement of 0.013ms we saw above would be mantained
+if we reduce the verification time to half by exploiting batch verification. This means that 
+if we manage to reduce the VRF verification time to ~0.075ms by using batch verification, the 
+try and increment function would bring us a further ~17% improvement, down to ~0.063ms. These
+particular experiments cannot be performed, as currently the batch-verification is only estimated
+using a [rust binary](./src/main.rs). If we decide to go forward with batch verification, we will
+implement this in Libsodium's fork (which is a considerable amount of work). 
 
 ### Difference between internal and exposed multiplication
 It is quite surprising to see that the scalar multiplication exposed by libsodium's API

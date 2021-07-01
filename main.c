@@ -5,7 +5,7 @@
 int main(void) {
     FILE *fpt;
     fpt = fopen("Results.csv", "w+");
-    fprintf(fpt,"verif, verif_try_inc, verif_opt, api_mul, internal_mul\n");
+    fprintf(fpt,"verif, verif_opt, verif_try_inc, api_mul, internal_mul\n");
 
 	#define MESSAGE_LEN 22
 	unsigned char message[MESSAGE_LEN] = "test_rust_verification";
@@ -23,7 +23,7 @@ int main(void) {
     unsigned char vrf_proof_own[crypto_vrf_ietfdraft03_PROOFBYTES];
     crypto_vrf_ietfdraft03_prove_try_inc(vrf_proof_own, sk, message, MESSAGE_LEN);
     unsigned char proof_output[crypto_vrf_ietfdraft03_OUTPUTBYTES];
-    for (int i = 0; i < 1000; i++){
+    for (int i = 0; i < 100000; i++){
         clock_t t_api;
         t_api = clock();
         api_scalarmul(pk, random_scalar);
@@ -83,7 +83,7 @@ int main(void) {
 //        double opt_times;
 //        running_times_scalar_ops(&old_times, &opt_times, proof_output, pk, vrf_proof, message, MESSAGE_LEN);
 
-        fprintf(fpt,"%f, %f, %f, %f, %f\n", time_taken_verif, time_taken_verif_try_inc, time_taken_verif_opt, time_api, time_internal);
+        fprintf(fpt,"%f, %f, %f, %f, %f\n", time_taken_verif, time_taken_verif_opt, time_taken_verif_try_inc, time_api, time_internal);
     }
 
     fclose(fpt);
