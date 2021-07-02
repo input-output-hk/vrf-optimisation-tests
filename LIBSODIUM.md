@@ -13,4 +13,8 @@ Cons:
 * No intention of merging non-standardised protocols (and us, using cutting edge 
   crypto will most likely need such protocols)
 * Even doubt of merging standardised protocols if not widely used (e.g. VRF)
-* Few options on hash functions (e.g. no Keccak, no Sha3, )
+* Few options on hash functions (e.g. no Keccak, no Sha3, ). This makes us
+  rely on other implementations (e.g. with [Keccak](https://github.com/input-output-hk/cardano-base/pull/221)).
+* The ed25519 verification equation is strict. This does not allow for batch 
+  verifications as described in the original paper (we would have to change the 
+  verification equation).

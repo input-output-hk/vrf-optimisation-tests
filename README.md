@@ -94,7 +94,7 @@ excludes this mechanism).
 This makes it vulnerable to timing attacks. However, this is only a concern when the
 message being mapped to a group element needs to be secret (with [practical attacks](https://eprint.iacr.org/2019/383.pdf)
 performed in such cases). However, for our scenario, the message mapped to a group element is public, and 
-known to any participant of the protocol. Therefore, and adversary could not exploit the non-constant
+known to any participant of the protocol. Therefore, an adversary could not exploit the non-constant
 timeness of the "try and increment" algorithm to break the security of the system. Note that these sort
 of attacks only affect the messages hashed to the group, and therefore there is no concern for the 
 VRF secret key. 
