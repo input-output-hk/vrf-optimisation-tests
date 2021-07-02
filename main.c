@@ -5,7 +5,7 @@
 int main(void) {
     FILE *fpt;
     fpt = fopen("Results.csv", "w+");
-    fprintf(fpt,"verif, verif_opt, verif_try_inc, api_mul, internal_mul\n");
+    fprintf(fpt,"verif, verif_opt, verif_opt_blake, verif_try_inc, api_mul, internal_mul\n");
 
 	#define MESSAGE_LEN 22
 	unsigned char message[MESSAGE_LEN] = "test_rust_verification";
@@ -20,13 +20,16 @@ int main(void) {
 
     unsigned char vrf_proof[crypto_vrf_ietfdraft03_PROOFBYTES];
     crypto_vrf_ietfdraft03_prove(vrf_proof, sk, message, MESSAGE_LEN);
+    unsigned char vrf_proof_blake[crypto_vrf_ietfdraft03_PROOFBYTES];
+    crypto_vrf_ietfdraft03_prove_blake(vrf_proof_blake, sk, message, MESSAGE_LEN);
     unsigned char vrf_proof_own[crypto_vrf_ietfdraft03_PROOFBYTES];
     crypto_vrf_ietfdraft03_prove_try_inc(vrf_proof_own, sk, message, MESSAGE_LEN);
     unsigned char proof_output[crypto_vrf_ietfdraft03_OUTPUTBYTES];
-    for (int i = 0; i < 100000; i++){
+    for (int i = 0; i < 1000; i++){
+        unsigned char v[crypto_core_ed25519_BYTES];
         clock_t t_api;
         t_api = clock();
-        api_scalarmul(pk, random_scalar);
+        crypto_scalarmult_ed25519(v, random_scalar, pk);
         t_api = clock() - t_api;
         double time_api = ((double) t_api) / CLOCKS_PER_SEC;
 
@@ -79,11 +82,24 @@ int main(void) {
             break;
         }
 
+        clock_t t_verif_blake;
+        t_verif_blake = clock();
+
+        int verification_blake = crypto_vrf_ietfdraft03_verify_opt_blake(proof_output, pk, vrf_proof_blake, message, MESSAGE_LEN);
+
+        t_verif_blake = clock() - t_verif_blake;
+        double time_taken_verif_blake = ((double) t_verif_blake) / CLOCKS_PER_SEC;
+
+        if (verification_blake == -1) {
+            printf("Something went wrong in blake verif\n");
+            return -1;
+        }
+
 //        double old_times;
 //        double opt_times;
 //        running_times_scalar_ops(&old_times, &opt_times, proof_output, pk, vrf_proof, message, MESSAGE_LEN);
 
-        fprintf(fpt,"%f, %f, %f, %f, %f\n", time_taken_verif, time_taken_verif_opt, time_taken_verif_try_inc, time_api, time_internal);
+        fprintf(fpt,"%f, %f, %f, %f, %f, %f\n", time_taken_verif, time_taken_verif_opt, time_taken_verif_blake, time_taken_verif_try_inc, time_api, time_internal);
     }
 
     fclose(fpt);

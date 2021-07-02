@@ -3,13 +3,14 @@ Testing possible improvements for the VRF verification function.
 
 ### Results
 
-|    | Verification time (us)   | Ratio with current  |
-| ------------- |:-------------:| -----:|
-| Current fn    | 206 | 1 |
-| Vartime ops      | 152      |   0.73 |
-| Try and increment (over vartime) | 139 | 0.67 |
-| Batch verification (estimate) | 75 | 0.36|
-| Try and increment (over batch, estimate) | 62 | 0.3 | 
+|    | Verification time (us)   | Ratio with current  | Requirements | Status | Follows standard | Requires hard fork |  
+| ------------- |:-------------:| -----:|:---------:|:---------:|:---------:|:---------:|
+| Current fn    | 206 | 1 | N/A | Done | Yes | No | 
+| Vartime ops      | 152      |   0.73 | Implement vartime multiscalar  multiplications for two variable bases | [Done](https://github.com/input-output-hk/libsodium/blob/vrf_opts/src/libsodium/crypto_core/ed25519/ref10/ed25519_ref10.c#L767) | Yes | No |
+| Vartime ops + Blake2b | 151 |  0.73 |  Implement new functions using | [Done]() | Yes | Yes |
+| Try and increment (over vartime) | 139 | 0.67 | Implement try and increment hash to group function | [Done](https://github.com/input-output-hk/libsodium/blob/vrf_opts/src/libsodium/crypto_vrf/ietfdraft03/convert.c#L92) | Yes ([see here](https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-vrf-09#section-5.4.1)) | Yes |
+| Batch verification (estimate) | 75 | 0.36| Implement vartime multiscalar multiplication for many variable bases | [Estimate in rust](./src/main.rs) | No | Yes|
+| Try and increment (over batch, estimate) | 62 | 0.3 | Two above | ⇧ | ⇧ | ⇧
 
 ### Running tests
 This code compiles using the `vrf_opts` [branch](https://github.com/input-output-hk/libsodium/tree/vrf_opts) 
@@ -81,6 +82,10 @@ try and increment function would bring us a further ~17% improvement, down to ~0
 particular experiments cannot be performed, as currently the batch-verification is only estimated
 using a [rust binary](./src/main.rs). If we decide to go forward with batch verification, we will
 implement this in Libsodium's fork (which is a considerable amount of work). 
+
+#### Blake2b
+We can see that switching to Blake2b does not give us a considerate improvement. 
+Hashing time is negligible with respect to arithmetic operations.  
 
 #### On the objections of using "try and increment"
 The use of the "try and increment" algorithm (also known as sampling methods) is oftentimes rejected

@@ -5,7 +5,7 @@ Pros:
 * Open source
 * Actively maintained
 * Main standardised cryptographic primitives
-* 
+* Formally verified code in their [roadmap](https://libsodium.gitbook.io/doc/roadmap).
 
 Cons:
 * We will always depend on a fork
