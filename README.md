@@ -3,7 +3,7 @@ Testing possible improvements for the VRF verification function.
 
 ### Results
 
-|    | Verification time (us)   | Improvement  |
+|    | Verification time (us)   | Ratio with current  |
 | ------------- |:-------------:| -----:|
 | Current fn    | 206 | 1 |
 | Vartime ops      | 152      |   0.73 |
@@ -81,6 +81,23 @@ try and increment function would bring us a further ~17% improvement, down to ~0
 particular experiments cannot be performed, as currently the batch-verification is only estimated
 using a [rust binary](./src/main.rs). If we decide to go forward with batch verification, we will
 implement this in Libsodium's fork (which is a considerable amount of work). 
+
+#### On the objections of using "try and increment"
+The use of the "try and increment" algorithm (also known as sampling methods) is oftentimes rejected
+on several grounds.  Shallue and van de Woestijne argue that such a mechanism is 
+[not proven to take polynomial time](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.831.5299&rep=rep1&type=pdf).
+Nonetheless, such a mechanism is conjectured to take polynomial time, and particularly in cryptography where
+its foundation is full of similar conjectures, this should not be a reason to exclude it from the
+options. More practical concerns affect this mechanism, in particular that it does not take constant time 
+(these are the grounds over which the [IETF draft](https://tools.ietf.org/pdf/draft-irtf-cfrg-hash-to-curve-11.pdf)
+excludes this mechanism). 
+This makes it vulnerable to timing attacks. However, this is only a concern when the
+message being mapped to a group element needs to be secret (with [practical attacks](https://eprint.iacr.org/2019/383.pdf)
+performed in such cases). However, for our scenario, the message mapped to a group element is public, and 
+known to any participant of the protocol. Therefore, and adversary could not exploit the non-constant
+timeness of the "try and increment" algorithm to break the security of the system. Note that these sort
+of attacks only affect the messages hashed to the group, and therefore there is no concern for the 
+VRF secret key. 
 
 ### Difference between internal and exposed multiplication
 It is quite surprising to see that the scalar multiplication exposed by libsodium's API
