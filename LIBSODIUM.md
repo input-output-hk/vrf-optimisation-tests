@@ -11,7 +11,8 @@ Pros:
 
 Cons:
 * We will always depend on a fork
-* Exposed EC API has terrible performance
+* Exposed EC API has bad performance. No implementation of useful operations for 
+  batch verification, such as multiscalar-multiplication (for variable bases).
 * No intention of merging non-standardised protocols (and us, using cutting edge 
   crypto will most likely need such protocols)
 * Even doubt of merging standardised protocols if not widely used (e.g. VRF)

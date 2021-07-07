@@ -1,5 +1,7 @@
 ## VRF optimisations
-Testing possible improvements for the VRF verification function. 
+In this document we expose the results of performance experiments, exploring possible 
+improvements for the VRF verification function. We expose two main properties of the 
+improvements: (i) if they follow the standard, and (ii) if the change requires a hard fork.
 
 ### Results
 
@@ -7,14 +9,24 @@ Testing possible improvements for the VRF verification function.
 | ------------- |:-------------:| -----:|:---------:|:---------:|:---------:|:---------:|
 | Current fn    | 206 | 1 | N/A | Done | Yes | No | 
 | Vartime ops      | 152      |   0.73 | Implement vartime multiscalar  multiplications for two variable bases | [Done](https://github.com/input-output-hk/libsodium/blob/vrf_opts/src/libsodium/crypto_core/ed25519/ref10/ed25519_ref10.c#L767) | Yes | No |
-| Vartime ops + Blake2b | 151 |  0.73 |  Implement new functions using | [Done]() | Yes | Yes |
+| Vartime ops + Blake2b | 151 |  0.73 |  Implement new functions using blake2b | [Done](https://github.com/input-output-hk/libsodium/blob/vrf_opts/src/libsodium/crypto_vrf/ietfdraft03/prove.c#L202) | Yes | Yes |
 | Try and increment (over vartime) | 139 | 0.67 | Implement try and increment hash to group function | [Done](https://github.com/input-output-hk/libsodium/blob/vrf_opts/src/libsodium/crypto_vrf/ietfdraft03/convert.c#L92) | Yes ([see here](https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-vrf-09#section-5.4.1)) | Yes |
 | Batch verification (estimate) | 75 | 0.36| Implement vartime multiscalar multiplication for many variable bases | [Estimate in rust](./src/main.rs) | No | Yes|
 | Try and increment (over batch, estimate) | 62 | 0.3 | Two above | ⇧ | ⇧ | ⇧
 
 ### Running tests
 This code compiles using the `vrf_opts` [branch](https://github.com/input-output-hk/libsodium/tree/vrf_opts) 
-of IOHK's `libsodium` fork.
+of IOHK's `libsodium` fork. First install libsodium:
+```
+git clone https://github.com/input-output-hk/libsodium.git
+cd libsodium
+git fetch --all
+git checkout vrf_opts
+./autogen.sh
+./configure
+make
+make install
+```
 
 To run tests:
 ```
@@ -51,10 +63,11 @@ internal_mul       0.000055
 
 `verif` is the implementation used currently, with no optimisations. 
 `verif_opt` runs the VRF verification with variable time operations. We 
-can see a considerable improvement in this case. To make matters better
+can see a considerable improvement in this case. To make matters better,
 this would be compatible with the current node implementation---we would
 simply need to change the verification function, and no hard-fork would be
-required. We also experiment using a different `hash_to_curve` function
+required. We test the VRF functions using a different hash function, namely
+blake2b. We also experiment using a different `hash_to_curve` function
 (also in the IETF draft). We can see that using try and increment technique, 
 `verif_try_inc`, instead of `elligator`, gives a
 slight improvement. However, it is to note that this would require a
@@ -76,7 +89,7 @@ hash-related operations. The optimisations that can be exploited by the EC opera
 be exploited by the hashing operations, and viceversa. This means that the variable time operations, 
 or the batch verification does not improve the hash-related functions. Similarly, using try and 
 increment, does not result in a performance proportional to the overall time, but rather an 
-absolute improvement. In other words, the improvement of 0.013ms we saw above would be mantained
+absolute improvement. In other words, the improvement of 0.013ms we saw above would be maintained
 if we reduce the verification time to half by exploiting batch verification. This means that 
 if we manage to reduce the VRF verification time to ~0.075ms by using batch verification, the 
 try and increment function would bring us a further ~17% improvement, down to ~0.063ms. These
