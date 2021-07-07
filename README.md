@@ -40,12 +40,13 @@ of the operations available in the API vs the internal operations. A run
 with 100_000 iterations get us the following numbers. 
 
 ```python
->>> data.mean()                                                           
- verif            0.000219                                                
- verif_try_inc    0.000207                                                
- verif_opt        0.000160                                                
- api_mul          0.000099                                                
- internal_mul     0.000052
+>>> data.mean()
+verif              0.000218
+verif_opt          0.000160
+verif_opt_blake    0.000159
+verif_try_inc      0.000147
+api_mul            0.000099
+internal_mul       0.000055
 ```
 
 `verif` is the implementation used currently, with no optimisations. 

@@ -25,7 +25,7 @@ int main(void) {
     unsigned char vrf_proof_own[crypto_vrf_ietfdraft03_PROOFBYTES];
     crypto_vrf_ietfdraft03_prove_try_inc(vrf_proof_own, sk, message, MESSAGE_LEN);
     unsigned char proof_output[crypto_vrf_ietfdraft03_OUTPUTBYTES];
-    for (int i = 0; i < 1000; i++){
+    for (int i = 0; i < 100000; i++){
         unsigned char v[crypto_core_ed25519_BYTES];
         clock_t t_api;
         t_api = clock();

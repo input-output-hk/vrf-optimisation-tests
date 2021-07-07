@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 #![allow(clippy::too_many_arguments)]
 use curve25519_dalek::ristretto::RistrettoPoint;
+use curve25519_dalek::constants::ED25519_BASEPOINT_POINT;
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::traits::VartimeMultiscalarMul;
 
@@ -27,6 +28,16 @@ use std::time::Instant;
 const NR_ITERATIONS: usize = 1000;
 
 fn main() {
+    let scalar = Scalar::random(&mut rand::thread_rng());
+    let point = ED25519_BASEPOINT_POINT * scalar;
+    let start_opt = Instant::now();
+
+    for _ in 0..NR_ITERATIONS {
+        let _a = scalar * point;
+    }
+    let duration_opt = start_opt.elapsed();
+    println!("Rust operation scalar mult: {:?}", duration_opt.as_micros() / (NR_ITERATIONS as u128));
+
     let nr_equations = 1024usize;
     let batches: Vec<usize> = vec![1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024];
 
