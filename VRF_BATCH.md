@@ -159,6 +159,9 @@ with `r_i` and `l_i` being random scalars. As far as my understanding
 goes, we assume that the nodes do have sufficient source of randomness, 
 and therefore these scalars can exploit this source of randomness
 to be selected. 
+**UPDATE** While this might be the case, we are still interested in 
+computing these scalar in a deterministic way, so that the function
+remains pure. See section below.
 
 Note that an invalid proof will invalidate the whole batch, and then we need
 to break down the batches to determine which is the invalid proof. However, 
@@ -208,3 +211,23 @@ transcript, as we now need to include two additional points to the transcript.
 
 Note that this performance only considers steps 4 and 5 of the algorithm (see above). 
 This does not represent the time of verifying 1024 proofs. 
+
+### On the purity of VRF batching
+It is of interest to mantain the purity of the VRF verification intact. If for 
+batch verification we require a source of randomness to divide each of the verifying
+equations, this purity would be lost. Hence, we explore how would be the best
+way to compute this randomness in a deterministic manner. The important property
+of this deterministic randomness generation, is that the value can only be known 
+to the verifier. Which raises the question---what value(s) can we use to deterministically
+(by the means of hash function) generate this randomness?
+
+* The inputs to the verification function are the public key, the proof itself, and the
+  string used to generated randomness. All these values are known to the prover, and there
+  cannot be used (uniquely).
+* This means that there is nothing `linked` to the proof itself that can be used to produce 
+  the batch verification scalars.
+* We would therefore require the verifier to introduce a secret which would then be used
+  to hash multiple times to generate the different randomness. If we generate this secret 
+  randomly, we are back at square one (and a half--- in this case we only need to 
+  generate randomness once). 
+  
