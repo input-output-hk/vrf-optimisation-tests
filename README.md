@@ -3,6 +3,20 @@ In this document we expose the results of performance experiments, exploring pos
 improvements for the VRF verification function. We expose two main properties of the 
 improvements: (i) if they follow the standard, and (ii) if the change requires a hard fork.
 
+#### Note:
+The implementation of vrf does not follow the current standard definition, in the following: 
+- Computation of the Elligator2 function performs a `bit` modification where it shouldn't, 
+resulting in a completely different VRF output. [Here](https://github.com/input-output-hk/libsodium/blob/draft-irtf-cfrg-vrf-03/src/libsodium/crypto_vrf/ietfdraft03/convert.c#L84)
+  we clear the sign bit, when it should be cleared only [here](https://github.com/input-output-hk/libsodium/blob/draft-irtf-cfrg-vrf-03/src/libsodium/crypto_core/ed25519/ref10/ed25519_ref10.c#L2527).
+  This does not reduce the security of the scheme, but makes it incompatible with other 
+  implementations.
+- The latest ietf draft no longer includes the suite_string as an input to the `hash_to_curve` 
+function. Furthermore, it concatenates a zero byte when computing the `proof_to_hash` function. 
+  This can be easily seen in the diff between version 6 and 7. 
+  
+It is recommended then to update the VRF function to the latest draft (which is expected to receive
+small changes as they are in the last round of comments). This means that a hard-fork _is_ required. 
+
 ### Results
 
 |    | Verification time (us)   | Ratio with current  | Requirements | Status | Follows standard | Requires hard fork |  
