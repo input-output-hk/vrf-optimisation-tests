@@ -213,21 +213,20 @@ Note that this performance only considers steps 4 and 5 of the algorithm (see ab
 This does not represent the time of verifying 1024 proofs. 
 
 ### On the purity of VRF batching
-It is of interest to mantain the purity of the VRF verification intact. If for 
+It is of interest to maintain the purity of the VRF verification intact. If for 
 batch verification we require a source of randomness to divide each of the verifying
 equations, this purity would be lost. Hence, we explore how would be the best
 way to compute this randomness in a deterministic manner. The important property
-of this deterministic randomness generation, is that the value can only be known 
-to the verifier. Which raises the question---what value(s) can we use to deterministically
-(by the means of hash function) generate this randomness?
+of this deterministic randomness generation, is that the value CANNOT be known 
+to the prover at the time of generating the proof. Which raises the question---
+what value(s) can we use to deterministically (by the means of hash function) 
+generate this randomness?
 
 * The inputs to the verification function are the public key, the proof itself, and the
-  string used to generated randomness. All these values are known to the prover, and there
-  cannot be used (uniquely).
-* This means that there is nothing `linked` to the proof itself that can be used to produce 
-  the batch verification scalars.
-* We would therefore require the verifier to introduce a secret which would then be used
-  to hash multiple times to generate the different randomness. If we generate this secret 
-  randomly, we are back at square one (and a half--- in this case we only need to 
-  generate randomness once). 
-  
+  string used to generated randomness. All these values are known to the prover, but 
+  only the proof itself is unknown when generating the proof.
+* The evolving nonce of each block would also be another candidate to consider. It's 
+  value is included in the header (where the VRF proof is included), and therefore is
+  not known at the time of proof generation. 
+* Finally, the block body hash could also be a candidate. More information can be found
+in the [Shelley formal spec](https://hydra.iohk.io/build/6752483/download/1/ledger-spec.pdf).
