@@ -7,15 +7,6 @@ int main(void) {
     fpt = fopen("Results.csv", "w+");
     fprintf(fpt,"verif, verif_opt, verif_opt_blake, verif_try_inc, api_mul, internal_mul\n");
 
-    crypto_generichash_blake2b_state hs;
-    unsigned char            k_string[1];
-    unsigned char k[5] = "0x01";
-
-    /* k_string = SHA512(truncated_hashed_sk_string || h_string) */
-    crypto_generichash_blake2b_init(&hs, NULL, 0U, 77);
-    crypto_generichash_blake2b_update(&hs, k, 5);
-    crypto_generichash_blake2b_final(&hs, k_string, 77);
-
 	#define MESSAGE_LEN 22
 	unsigned char message[MESSAGE_LEN] = "test_rust_verification";
 
@@ -29,6 +20,8 @@ int main(void) {
 
     unsigned char vrf_proof[crypto_vrf_ietfdraft03_PROOFBYTES];
     crypto_vrf_ietfdraft03_prove(vrf_proof, sk, message, MESSAGE_LEN);
+    unsigned char vrf_proof_batch_compatible[crypto_vrf_ietfdraft03_BATCH_PROOFBYTES];
+    crypto_vrf_ietfdraft03_prove_batch_compatible(vrf_proof_batch_compatible, sk, message, MESSAGE_LEN);
     unsigned char vrf_proof_blake[crypto_vrf_ietfdraft03_PROOFBYTES];
     crypto_vrf_ietfdraft03_prove_blake(vrf_proof_blake, sk, message, MESSAGE_LEN);
     unsigned char vrf_proof_own[crypto_vrf_ietfdraft03_PROOFBYTES];
@@ -50,6 +43,19 @@ int main(void) {
 
         if (int_mul != 0) {
             printf("failed internal multiplication");
+        }
+
+        clock_t t_verif_batch_comp;
+        t_verif_batch_comp = clock();
+
+        int verification_batch = crypto_vrf_ietfdraft03_verify_batch_compatible(vrf_proof_batch_compatible, pk, vrf_proof, message, MESSAGE_LEN);
+
+        t_verif_batch_comp = clock() - t_verif_batch_comp;
+        double time_taken_verif_batch_comp = ((double) t_verif_batch_comp) / CLOCKS_PER_SEC;
+
+        if (verification_batch == -1) {
+            printf("Something went wrong with batch compatible version\n");
+            break;
         }
 
         clock_t t_verif;
