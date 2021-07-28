@@ -7,6 +7,15 @@ int main(void) {
     fpt = fopen("Results.csv", "w+");
     fprintf(fpt,"verif, verif_opt, verif_opt_blake, verif_try_inc, api_mul, internal_mul\n");
 
+    crypto_generichash_blake2b_state hs;
+    unsigned char            k_string[1];
+    unsigned char k[5] = "0x01";
+
+    /* k_string = SHA512(truncated_hashed_sk_string || h_string) */
+    crypto_generichash_blake2b_init(&hs, NULL, 0U, 77);
+    crypto_generichash_blake2b_update(&hs, k, 5);
+    crypto_generichash_blake2b_final(&hs, k_string, 77);
+
 	#define MESSAGE_LEN 22
 	unsigned char message[MESSAGE_LEN] = "test_rust_verification";
 
@@ -25,7 +34,7 @@ int main(void) {
     unsigned char vrf_proof_own[crypto_vrf_ietfdraft03_PROOFBYTES];
     crypto_vrf_ietfdraft03_prove_try_inc(vrf_proof_own, sk, message, MESSAGE_LEN);
     unsigned char proof_output[crypto_vrf_ietfdraft03_OUTPUTBYTES];
-    for (int i = 0; i < 100000; i++){
+    for (int i = 0; i < 100; i++){
         unsigned char v[crypto_core_ed25519_BYTES];
         clock_t t_api;
         t_api = clock();
