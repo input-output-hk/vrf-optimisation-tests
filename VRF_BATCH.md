@@ -120,16 +120,20 @@ transacript, and the verifier simply checked for equality, then the
 multiscalar optimisation could be exploited. 
 
 In particular, this would require changes in step 8 of `ECVRF_prove`, and
-steps 2, 4 and 5 of `ECVRF_verify`. In particular: 
+steps 2, 4 and 5 of `ECVRF_verify`. Also, we would need to move the challenge 
+computation from step 6, to somewhere somewhere in between step 3 and 4 (we
+call it step 3.5 for now). In particular: 
 ```
 ECVRF_prove
 8. pi_string = point_to_string(Gamma) || point_to_string(k*B) || 
-point_to_string(k*H) || int_to_string(c) || int_to_string(s)
+point_to_string(k*H) || int_to_string(s)
 ```
 
 ```
 ECVRF_verify
-2. (Gamma, U, V, c, s) = D
+2. (Gamma, U, V, s) = D
+
+3,5. c = ECVRF_hash_points(H, Gamma, U, V)
 
 4.  U =? s*B - c*Y
 
@@ -167,6 +171,21 @@ Note that an invalid proof will invalidate the whole batch, and then we need
 to break down the batches to determine which is the invalid proof. However, 
 in our use case, when multiple VRFs are expected to be validated we expect all
 of them to be valid, making this risk reasonable in practice. 
+
+### Note on the changes
+It is important to note that the changes discussed above are not changes to the protocol
+but to how the Discrete Log Equality Sigma Proof is shared with the verifier. Let 
+the three messages exchanged during the sigma proof between the prover and verifier be named  
+as "announcement", "challenge" and "response". The non-interactive version removes the
+interaction between prover and verifier, and the former computes the challenge by hashing a 
+determined list of elements. 
+To improve communication complexity of sigma protocols, the proof either consists of the challenge
+and the response, or of the announcement and the response. On the one hand, the announcement can 
+be computed by the challenge, response and common reference string. On the other hand the challenge
+can be computed using the announcement and the common reference string. Both mechanisms
+are considered secure for sigma-protocols (note that a sigma protocol is built
+in a way that announcement, challenge and response can be shared without affecting
+the zero-knowledge property of the proof). 
 
 ### Performance analysis
 We run a performance analysis to understand how much improvement such a 
@@ -208,8 +227,10 @@ Batch size 1024    29.648970
 We see that the optimisation results in an important improvement. This 
 comes at the cost of non-backwards compatibility, and a bigger proof
 transcript, as we now need to include two additional points to the transcript. 
+In particular, the current proof is 80 bytes (the challenge `c` is only
+16 bytes), while the new proof would require 128 bytes.
 
-Note that this performance only considers steps 4 and 5 of the algorithm (see above). 
+Note that this performance estimate only considers steps 4 and 5 of the algorithm (see above). 
 This does not represent the time of verifying 1024 proofs. 
 
 ### On the purity of VRF batching

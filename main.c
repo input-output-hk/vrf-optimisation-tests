@@ -28,27 +28,27 @@ int main(void) {
     crypto_vrf_ietfdraft03_prove_try_inc(vrf_proof_own, sk, message, MESSAGE_LEN);
     unsigned char proof_output[crypto_vrf_ietfdraft03_OUTPUTBYTES];
     for (int i = 0; i < 100; i++){
-        unsigned char v[crypto_core_ed25519_BYTES];
-        clock_t t_api;
-        t_api = clock();
-        crypto_scalarmult_ed25519(v, random_scalar, pk);
-        t_api = clock() - t_api;
-        double time_api = ((double) t_api) / CLOCKS_PER_SEC;
-
-        clock_t t_internal;
-        t_internal = clock();
-        int int_mul = internal_scalarmul(pk, random_scalar);
-        t_internal = clock() - t_internal;
-        double time_internal = ((double) t_internal) / CLOCKS_PER_SEC;
-
-        if (int_mul != 0) {
-            printf("failed internal multiplication");
-        }
+//        unsigned char v[crypto_core_ed25519_BYTES];
+//        clock_t t_api;
+//        t_api = clock();
+//        crypto_scalarmult_ed25519(v, random_scalar, pk);
+//        t_api = clock() - t_api;
+//        double time_api = ((double) t_api) / CLOCKS_PER_SEC;
+//
+//        clock_t t_internal;
+//        t_internal = clock();
+//        int int_mul = internal_scalarmul(pk, random_scalar);
+//        t_internal = clock() - t_internal;
+//        double time_internal = ((double) t_internal) / CLOCKS_PER_SEC;
+//
+//        if (int_mul != 0) {
+//            printf("failed internal multiplication");
+//        }
 
         clock_t t_verif_batch_comp;
         t_verif_batch_comp = clock();
 
-        int verification_batch = crypto_vrf_ietfdraft03_verify_batch_compatible(vrf_proof_batch_compatible, pk, vrf_proof, message, MESSAGE_LEN);
+        int verification_batch = crypto_vrf_ietfdraft03_verify_batch_compatible(proof_output, pk, vrf_proof_batch_compatible, message, MESSAGE_LEN);
 
         t_verif_batch_comp = clock() - t_verif_batch_comp;
         double time_taken_verif_batch_comp = ((double) t_verif_batch_comp) / CLOCKS_PER_SEC;
@@ -114,7 +114,7 @@ int main(void) {
 //        double opt_times;
 //        running_times_scalar_ops(&old_times, &opt_times, proof_output, pk, vrf_proof, message, MESSAGE_LEN);
 
-        fprintf(fpt,"%f, %f, %f, %f, %f, %f\n", time_taken_verif, time_taken_verif_opt, time_taken_verif_blake, time_taken_verif_try_inc, time_api, time_internal);
+        fprintf(fpt,"%f, %f, %f, %f\n", time_taken_verif, time_taken_verif_opt, time_taken_verif_blake, time_taken_verif_try_inc); // , time_api, time_internal);
     }
 
     fclose(fpt);
