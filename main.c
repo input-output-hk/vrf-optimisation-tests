@@ -5,7 +5,8 @@
 int main(void) {
     FILE *fpt;
     fpt = fopen("Results.csv", "w+");
-    fprintf(fpt,"verif, verif_opt, verif_opt_blake, verif_try_inc, api_mul, internal_mul\n");
+    fprintf(fpt,"verif, verif_opt, verif_opt_blake, verif_try_inc, batch_compatible, api_mul, internal_mul, "
+                "single_multi, 100_multi, 200_multi\n");
 
 	#define MESSAGE_LEN 22
 	unsigned char message[MESSAGE_LEN] = "test_rust_verification";
@@ -14,6 +15,16 @@ int main(void) {
 	unsigned char sk[crypto_vrf_ietfdraft03_SECRETKEYBYTES];
 	
 	crypto_vrf_ietfdraft03_keypair(pk, sk);
+
+	unsigned char zero_point[32];
+    if (crypto_core_ed25519_sub(zero_point, pk, pk) == -1) {
+        printf("failed");
+    }
+    printf("zero bytes: ");
+    for (int i = 0; i < 32; i++) {
+        printf("%d", zero_point[i]);
+    }
+    printf("\n");
 
     unsigned char random_scalar[32];
     crypto_core_ed25519_scalar_random(random_scalar);
@@ -27,23 +38,28 @@ int main(void) {
     unsigned char vrf_proof_own[crypto_vrf_ietfdraft03_PROOFBYTES];
     crypto_vrf_ietfdraft03_prove_try_inc(vrf_proof_own, sk, message, MESSAGE_LEN);
     unsigned char proof_output[crypto_vrf_ietfdraft03_OUTPUTBYTES];
-    for (int i = 0; i < 100; i++){
-//        unsigned char v[crypto_core_ed25519_BYTES];
-//        clock_t t_api;
-//        t_api = clock();
-//        crypto_scalarmult_ed25519(v, random_scalar, pk);
-//        t_api = clock() - t_api;
-//        double time_api = ((double) t_api) / CLOCKS_PER_SEC;
-//
-//        clock_t t_internal;
-//        t_internal = clock();
-//        int int_mul = internal_scalarmul(pk, random_scalar);
-//        t_internal = clock() - t_internal;
-//        double time_internal = ((double) t_internal) / CLOCKS_PER_SEC;
-//
-//        if (int_mul != 0) {
-//            printf("failed internal multiplication");
-//        }
+    for (int i = 0; i < 10; i++){
+        unsigned char v[crypto_core_ed25519_BYTES];
+        clock_t t_api;
+        t_api = clock();
+        crypto_scalarmult_ed25519(v, random_scalar, pk);
+        t_api = clock() - t_api;
+        double time_api = ((double) t_api) / CLOCKS_PER_SEC;
+
+        clock_t t_internal;
+        t_internal = clock();
+        int int_mul = internal_scalarmul(pk, random_scalar);
+        t_internal = clock() - t_internal;
+        double time_internal = ((double) t_internal) / CLOCKS_PER_SEC;
+
+        double time_single_multi_mult = time_per_proof(1);
+        double time_100_multi_mult = time_per_proof(20);
+        double time_200_multi_mult = time_per_proof_200();
+//        double time_1000_multi_mult = time_per_proof(1000);
+
+        if (int_mul != 0) {
+            printf("failed internal multiplication");
+        }
 
         clock_t t_verif_batch_comp;
         t_verif_batch_comp = clock();
@@ -114,7 +130,9 @@ int main(void) {
 //        double opt_times;
 //        running_times_scalar_ops(&old_times, &opt_times, proof_output, pk, vrf_proof, message, MESSAGE_LEN);
 
-        fprintf(fpt,"%f, %f, %f, %f\n", time_taken_verif, time_taken_verif_opt, time_taken_verif_blake, time_taken_verif_try_inc); // , time_api, time_internal);
+        fprintf(fpt,"%f, %f, %f, %f, %f, %f, %f, %f, %f, %f\n", time_taken_verif, time_taken_verif_opt,
+                time_taken_verif_blake, time_taken_verif_try_inc, time_taken_verif_batch_comp, time_api,
+                time_internal, time_single_multi_mult, time_100_multi_mult, time_200_multi_mult);
     }
 
     fclose(fpt);
