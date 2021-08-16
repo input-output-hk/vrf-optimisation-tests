@@ -234,20 +234,59 @@ Note that this performance estimate only considers steps 4 and 5 of the algorith
 This does not represent the time of verifying 1024 proofs. 
 
 ### On the purity of VRF batching
-It is of interest to maintain the purity of the VRF verification intact. If for 
-batch verification we require a source of randomness to divide each of the verifying
-equations, this purity would be lost. Hence, we explore how would be the best
-way to compute this randomness in a deterministic manner. The important property
-of this deterministic randomness generation, is that the value CANNOT be known 
-to the prover at the time of generating the proof. Which raises the question---
-what value(s) can we use to deterministically (by the means of hash function) 
-generate this randomness?
+It is of interest to maintain the deterministic nature of the VRF verification intact. 
+If for batch verification we require a source of randomness to divide each of the 
+verifying equations, this determinism would be lost. Hence, we explore what would 
+be the best way to compute this randomness in a deterministic manner. The important 
+property of this deterministic (pseudo) randomness generation, is that the value 
+CANNOT be known to the prover at the time of generating the proof. Which raises 
+the question---what value(s) can we use to deterministically (by the means of hash 
+function) generate this randomness?
 
-* The inputs to the verification function are the public key, the proof itself, and the
-  string used to generated randomness. All these values are known to the prover, but 
-  only the proof itself is unknown when generating the proof.
-* The evolving nonce of each block would also be another candidate to consider. It's 
-  value is included in the header (where the VRF proof is included), and therefore is
-  not known at the time of proof generation. 
-* Finally, the block body hash could also be a candidate. More information can be found
-in the [Shelley formal spec](https://hydra.iohk.io/build/6752483/download/1/ledger-spec.pdf).
+* The inputs to the verification function are the public key, the proof itself, and 
+the string used to generate randomness. All these values are known to the prover, 
+but only the proof itself is unknown when generating the proof. These values can be 
+hashed to compute a pseudorandom scalar.
+* The evolving nonce (of the Cardano blockchain) of each block would also be another 
+candidate to consider. It's  value is included in the header (where the VRF proof is 
+included), and therefore is not known at the time of proof generation.
+* Finally, the block body hash could also be a candidate. This hash includes the VRF 
+proof. More information can be found in the [Shelley formal spec](https://hydra.iohk.io/build/6752483/download/1/ledger-spec.pdf).
+
+The big positive mark on the first point (using the proof itself), is that it is a 
+generic solution. This would work for any application that uses the VRF proof, and 
+would therefore be more susceptible to be included in a future version of the draft.
+
+As described previously, we need randomness for each and every proof the verifier 
+includes in the batch. The three options described above allow for independent random 
+scalar generation; each VRF proof is related to a single proof, evolving nonce or 
+block body hash (respectively). This means that there are two options to generate 
+the random scalars: either by using a different source of randomness for each of the 
+scalars, or by using a single source of randomness, and generating several scalars 
+from it. In particular, let `S_i` be the source of randomness related to proof `i`. The 
+two options are as follows:
+
+For every `i \in [1, n]` either:
+
+`l_i = H(S_i || 0x4c) and r_i = H(S_i || 0x52),`
+
+OR
+
+`l_i = H(S_T || i || 0x4c) and r_i = H(S_T || i || 0x52)`
+
+with `S_T = (S_0 || S_1 || ... || S_n)`. The problem of the first option is that prover 
+`i` can generate `l_j` and `r_j` for `j<i`. This may hamper the formal analysis of the changes.
+
+#### Chosen option (currently under review for validation)
+Given the reasoning above, our preliminary conclusion for the best option to batch 
+verify several proofs, is to use the proofs themselves as a source of randomness 
+(to facilitate standardisation), and to use a single seed for all proofs. In 
+particular,
+
+`l_i = H(S_T || i || 0x4c) and r_i = H(S_T || i || 0x52)`
+
+with
+
+`S_T = (pi_string_1, pi_string_2, ... , pi_string_n)`
+
+and `pi_string` as defined in above.

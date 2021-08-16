@@ -2,17 +2,18 @@
 #include <sodium.h>
 #include <time.h>
 
+
 int main(void) {
     FILE *fpt;
     fpt = fopen("Results.csv", "w+");
     fprintf(fpt,"verif, verif_opt, verif_opt_blake, verif_try_inc, batch_compatible, api_mul, internal_mul, "
-                "single_multi, 20_multi, 100_multi\n");
+                "single_multi\n");
 	#define MESSAGE_LEN 22
 	unsigned char message[MESSAGE_LEN] = "test_rust_verification";
 
 	unsigned char pk[crypto_vrf_ietfdraft03_PUBLICKEYBYTES];
 	unsigned char sk[crypto_vrf_ietfdraft03_SECRETKEYBYTES];
-	
+
 	crypto_vrf_ietfdraft03_keypair(pk, sk);
 
     unsigned char random_scalar[32];
@@ -27,7 +28,7 @@ int main(void) {
     unsigned char vrf_proof_own[crypto_vrf_ietfdraft03_PROOFBYTES];
     crypto_vrf_ietfdraft03_prove_try_inc(vrf_proof_own, sk, message, MESSAGE_LEN);
     unsigned char proof_output[crypto_vrf_ietfdraft03_OUTPUTBYTES];
-    for (int i = 0; i < 100; i++){
+    for (int i = 0; i < 10000; i++){
         unsigned char v[crypto_core_ed25519_BYTES];
         clock_t t_api;
         t_api = clock();
@@ -41,8 +42,8 @@ int main(void) {
         t_internal = clock() - t_internal;
         double time_internal = ((double) t_internal) / CLOCKS_PER_SEC;
         double time_single_multi_mult = time_per_proof(1);
-        double time_20_multi_mult = time_per_proof(20);
-        double time_100_multi_mult = time_per_proof(100);
+//        double time_20_multi_mult = time_per_proof(20);
+//        double time_100_multi_mult = time_per_proof(100);
 //        double time_1000_multi_mult = time_per_proof(1000);
 
         if (int_mul != 0) {
@@ -116,11 +117,11 @@ int main(void) {
 //        double opt_times;
 //        running_times_scalar_ops(&old_times, &opt_times, proof_output, pk, vrf_proof, message, MESSAGE_LEN);
 
-        fprintf(fpt,"%f, %f, %f, %f, %f, %f, %f, %f, %f, %f\n", time_taken_verif, time_taken_verif_opt,
+        fprintf(fpt,"%f, %f, %f, %f, %f, %f, %f, %f\n", time_taken_verif, time_taken_verif_opt,
                 time_taken_verif_blake, time_taken_verif_try_inc, time_taken_verif_batch_comp, time_api,
-                time_internal, time_single_multi_mult, time_20_multi_mult, time_100_multi_mult);
+                time_internal, time_single_multi_mult);
     }
 
     fclose(fpt);
     return 0;
-}	
+}

@@ -9,10 +9,13 @@ The implementation of vrf does not follow the current standard definition, in th
 resulting in a completely different VRF output. [Here](https://github.com/input-output-hk/libsodium/blob/draft-irtf-cfrg-vrf-03/src/libsodium/crypto_vrf/ietfdraft03/convert.c#L84)
   we clear the sign bit, when it should be cleared only [here](https://github.com/input-output-hk/libsodium/blob/draft-irtf-cfrg-vrf-03/src/libsodium/crypto_core/ed25519/ref10/ed25519_ref10.c#L2527).
   This does not reduce the security of the scheme, but makes it incompatible with other 
-  implementations.
-- The latest ietf draft no longer includes the suite_string as an input to the `hash_to_curve` 
-function. Furthermore, it concatenates a zero byte when computing the `proof_to_hash` function. 
-  This can be easily seen in the diff between version 6 and 7. 
+  implementations .
+- The latest ietf draft defines differently the `hash_to_curve` 
+function (the domain separation is now set to `ECVRF_edwards25519_XMD:SHA-512_ELL2_NU_4`).
+  Furthermore, it 
+  concatenates a zero byte when computing the `proof_to_hash` function. 
+  This can be easily seen in the [diff](https://www.ietf.org/rfcdiff?difftype=--hwdiff&url2=draft-irtf-cfrg-vrf-07.txt)
+  between version 6 and 7. 
   
 It is recommended then to update the VRF function to the latest draft (which is expected to receive
 small changes as they are in the last round of comments). This means that a hard-fork _is_ required. 
@@ -67,12 +70,14 @@ with 100_000 iterations get us the following numbers.
 
 ```python
 >>> data.mean()
-verif              0.000218
-verif_opt          0.000160
-verif_opt_blake    0.000159
-verif_try_inc      0.000147
-api_mul            0.000099
-internal_mul       0.000055
+verif               0.000201
+verif_opt           0.000142
+verif_opt_blake     0.000142
+verif_try_inc       0.000135
+batch_compatible    0.000124
+api_mul             0.000090
+internal_mul        0.000051
+single_multi        0.000084
 ```
 
 `verif` is the implementation used currently, with no optimisations. 
@@ -87,11 +92,18 @@ blake2b. We also experiment using a different `hash_to_curve` function
 slight improvement. However, it is to note that this would require a
 hard fork.
 
-Finally, the operations made available in the api, `api_mul`,
-show to perform much worse than the internal ones, `internal_mul`. This 
+We compare the operations made available in the api, `api_mul`,
+with the internal ones, `internal_mul`, and show that the latter is much
+more efficient. This 
 is due to the fact that the api assumes the caller does not "know what
 it is doing", and before performing the operation makes a bunch of 
-tests and conversions. 
+tests and conversions.
+
+Finally, we implement multiscalar multiplication with undetermined number 
+of elements. Our current implementation does not efficiently handle the heap
+(we are now working with arrays of unknown size), and some more work is required
+to have a reasonable estimate for larger sizes. Our end goal is to batch 200 proofs
+in a single batch verification.
 
 ### Batch verification
 We give details of the changes required for batch verification in [VRF_BATCH](VRF_BATCH.md)
