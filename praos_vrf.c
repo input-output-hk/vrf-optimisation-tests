@@ -3,14 +3,19 @@
 #include <string.h>
 #include <time.h>
 
+/***
+ * Checkout the README.md to understand with which version of libsodium this code compiles. This binary tests
+ * the different options available for VRF improvements, including changing the hash function to blake, using
+ * `try and increment` as a hash to curve function, and batch compatible verification.
+***/
 
 int main(void) {
     FILE *fpt;
-    fpt = fopen("Results.csv", "w+");
+    fpt = fopen("results_praos.csv", "w+");
     fprintf(fpt,"verif, verif_opt, verif_opt_blake, verif_try_inc, batch_compatible, api_mul, internal_mul, "
                 "single_try_inc, elligator\n");
-	#define MESSAGE_LEN 128
-	unsigned char message[MESSAGE_LEN];
+#define MESSAGE_LEN 128
+    unsigned char message[MESSAGE_LEN];
 
     for (int i = 0; i < 10000; i++){
         for (int i=0;i<MESSAGE_LEN;i++)
